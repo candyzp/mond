@@ -23,12 +23,39 @@ func is_debugged() -> Bool {
     return (info.kp_proc.p_flag & P_TRACED) != 0
 }
 
+func current_os_build() -> String? {
+    var size = 0
+    guard sysctlbyname("kern.osversion", nil, &size, nil, 0) == 0, size > 1 else {
+        return nil
+    }
+
+    var buffer = [CChar](repeating: 0, count: size)
+    guard sysctlbyname("kern.osversion", &buffer, &size, nil, 0) == 0 else {
+        return nil
+    }
+
+    return String(cString: buffer)
+}
+
+private func ios27_build_train_number(_ build: String) -> Int? {
+    guard build.hasPrefix("24A") else { return nil }
+    let digits = build.dropFirst(3).prefix { $0.isNumber }
+    return Int(digits)
+}
+
 func is_supported() -> Bool {
     let v = ProcessInfo.processInfo.operatingSystemVersion
 
-    return v.majorVersion == 27 &&
-           v.minorVersion == 0 &&
-           v.patchVersion == 0
+    guard v.majorVersion == 27,
+          v.minorVersion == 0,
+          v.patchVersion == 0,
+          let build = current_os_build(),
+          let train = ios27_build_train_number(build) else {
+        return false
+    }
+
+    // iOS/iPadOS 27 beta 4 is build train 24A5390. Fail closed on later builds.
+    return train <= 5390
 }
 
 func hasHomeButton() -> Bool {

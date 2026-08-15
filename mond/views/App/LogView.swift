@@ -8,6 +8,8 @@
 import SwiftUI
 import PartyUI
 
+private let maxLogCharacters = 100_000
+
 struct LogView: View {
     @State private var log = ""
 
@@ -39,9 +41,15 @@ struct LogView: View {
 
                         DispatchQueue.main.async {
                             log.append(text)
-                            proxy.scrollTo(0)
+                            if log.count > maxLogCharacters {
+                                log = String(log.suffix(maxLogCharacters))
+                            }
+                            proxy.scrollTo(0, anchor: .bottom)
                         }
                     }
+                }
+                .onDisappear {
+                    pipe.fileHandleForReading.readabilityHandler = nil
                 }
                 .contextMenu {
                     Button {
@@ -54,4 +62,3 @@ struct LogView: View {
         }
     }
 }
-

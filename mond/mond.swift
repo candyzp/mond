@@ -37,15 +37,23 @@ struct mond: App {
             dup2(pipe.fileHandleForWriting.fileDescriptor, STDOUT_FILENO)
         }
         
-        UserDefaults.standard.register(defaults: ["exploit_method": "bad_query"])
+        UserDefaults.standard.register(defaults: ["method": "bad_query"])
         if UserDefaults.standard.bool(forKey: "ka_on") {
             keep_alive()
         }
         
         // thanks lunginspector
-        let fix = class_getInstanceMethod(UIDocumentPickerViewController.self, #selector(UIDocumentPickerViewController.fix_init(forOpeningContentTypes:asCopy:)))!
-        let og = class_getInstanceMethod(UIDocumentPickerViewController.self, #selector(UIDocumentPickerViewController.init(forOpeningContentTypes:asCopy:)))!
-        method_exchangeImplementations(og, fix)
+        if let fix = class_getInstanceMethod(
+            UIDocumentPickerViewController.self,
+            #selector(UIDocumentPickerViewController.fix_init(forOpeningContentTypes:asCopy:))
+        ), let original = class_getInstanceMethod(
+            UIDocumentPickerViewController.self,
+            #selector(UIDocumentPickerViewController.init(forOpeningContentTypes:asCopy:))
+        ) {
+            method_exchangeImplementations(original, fix)
+        } else {
+            print("(mond) document picker compatibility hook unavailable")
+        }
     }
     
     var body: some Scene {
@@ -61,8 +69,14 @@ struct mond: App {
                     state.append_poster_file(url)
                 }
                 .onAppear() {
-                    if !is_supported() {
-                        Alertinator.shared.alert(title: "Not supported!", body: "Your iOS version may not be supported by mond.\nMond only supports iOS 27.0 beta 1 - beta 4.")
+                    guard is_supported() else {
+                        state.exploit_succeeded = false
+                        let build = current_os_build().map { " Build: \($0)." } ?? ""
+                        Alertinator.shared.alert(
+                            title: "Not supported!",
+                            body: "Your iOS version is not supported by mond. Mond only supports iOS 27.0 beta 1 - beta 4.\(build)"
+                        )
+                        return
                     }
                     
                     grant_all(state: state)
