@@ -54,8 +54,9 @@ func is_supported() -> Bool {
         return false
     }
 
-    // iOS/iPadOS 27 beta 4 is build train 24A5390. Fail closed on later builds.
-    return train <= 5390
+    // iOS/iPadOS 27 beta 1 through beta 4 use build trains 24A5355...24A5390.
+    // Fail closed outside that known window instead of attempting unsupported builds.
+    return (5355...5390).contains(train)
 }
 
 func hasHomeButton() -> Bool {
